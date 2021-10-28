@@ -27,3 +27,36 @@ app
 A rule lookup for "canary.giggl.app" is requested. First, "app" is matched, but it's not a wildcard, so it's ignored. We now check the decendants of "app" for "giggl" - it matches, and it's a wildcard match, so we store it within the context of the lookup. This lookup will now 100% return a match, even if it isn't absolute. Anyway, we now check the decendants of "giggl" for "canary", though it doesn't exist, and the traversal ends. Now, we didn't have an absolute match, but we did have a wildcard match earlier on for ".giggl.app", so we successfully return the result ".giggl.app" from the lookup function.
 
 ## Usage
+
+First, add `domain-lookup-tree` to your Cargo.toml:
+
+```toml
+[dependencies]
+domain-lookup-tree = "0.1"
+```
+
+Now you can import and use the `domain_lookup_tree::DomainLookupTree` type:
+
+```rs
+extern crate domain_lookup_tree;
+use domain_lookup_tree::DomainLookupTree;
+
+let mut tree = DomainLookupTree::new();
+
+
+// Insert some domains
+tree.insert(".google.com"); // prefix with a dot to denote a wildcard entry
+tree.insert("api.twitter.com");
+tree.insert("phineas.io");
+
+// Perform lookups
+
+tree.lookup("www.google.com");
+// => Some(".google.com")
+
+tree.lookup("twitter.com");
+// => None
+
+tree.lookup("api.twitter.com");
+// => Some("api.twitter.com")
+```
