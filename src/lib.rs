@@ -72,21 +72,19 @@ impl Node {
 }
 
 impl DomainLookupTree {
-    pub fn new(minimum_level: usize) -> DomainLookupTree {
+    pub fn new() -> DomainLookupTree {
         DomainLookupTree {
             nodes: Default::default(),
-            minimum_level,
+            minimum_level: 0,
         }
     }
 
-    // For inserting an item into the tree, we need to make sure that t
     pub fn insert(&mut self, domain: &str) {
         let is_wildcard = domain.starts_with(".");
         let segments = domain_to_rseg(domain);
         let n_segments = segments.len();
 
         let mut head = &mut self.nodes;
-        // let mut fqdn = String::new();
         for (i, segment) in segments.iter().copied().enumerate() {
             let node = head
                 .entry(segment.to_owned())
