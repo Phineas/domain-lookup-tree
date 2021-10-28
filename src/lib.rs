@@ -55,8 +55,6 @@ pub struct DomainLookupTree {
 pub struct Node {
     wildcard: bool,
     nodes: NodeList,
-    #[allow(unused)]
-    parent: Option<Weak<Self>>,
     data: String,
 }
 
@@ -65,7 +63,6 @@ impl Node {
         Self {
             wildcard,
             nodes: Default::default(),
-            parent: None,
             data: data.to_owned(),
         }
     }

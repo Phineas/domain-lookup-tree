@@ -3,6 +3,6 @@ authors = ["Phineas Walton <phin@phineas.io>"]
 description = "A tree structure in Rust optimized for looking up domain names, with wildcard support"
 name = "domain-lookup-tree"
 license = "MPL-2.0"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 readme="./README.md"
