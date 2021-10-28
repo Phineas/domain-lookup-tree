@@ -71,8 +71,6 @@ impl Node {
     }
 }
 
-// The comments in the implementation are written in relation to the "story of a lookup", above
-
 impl DomainLookupTree {
     pub fn new(minimum_level: usize) -> DomainLookupTree {
         DomainLookupTree {
@@ -105,27 +103,36 @@ impl DomainLookupTree {
     pub fn lookup(&self, domain: &str) -> Option<String> {
         match self.traverse(domain) {
             None => None,
-            Some(node) => return Some(node.data.to_owned()),
+            Some((fqdn, node)) => {
+                return Some(format!("{}{}", if node.wildcard { "." } else { "" }, fqdn))
+            }
         }
     }
 
-    pub fn traverse(&self, domain: &str) -> Option<&Node> {
+    pub fn traverse(&self, domain: &str) -> Option<(String, &Node)> {
         let segments = domain_to_rseg(domain);
         let mut wildcard_match = None;
         // We start the traversal at the root
         let mut head: &NodeList = &self.nodes;
+
+        let mut fqdn = String::new();
 
         // We traverse the tree in level-reverse order
         for (i, segment) in segments.iter().copied().enumerate() {
             // Now we look up the children of the latest matched node
             // If this is the first iteration, then it's the root NodeList
             if let Some(child) = head.get(segment) {
-                println!("{}, {}, {}, {:?}", i, segments.len(), segment, child);
+                fqdn = format!(
+                    "{}{}{}",
+                    segment.to_owned(),
+                    if i == 0 { "" } else { "." },
+                    fqdn
+                );
                 head = &child.nodes;
                 // We have exhausted the traversal. If the traversal depth is equal to the segment
                 // length, then we've found an absolute match!
                 if i == segments.len() - 1 {
-                    return Some(child);
+                    return Some((fqdn, child));
                 } else if child.wildcard {
                     // Current node is wildcard, so we now 100% have a value to return
                     wildcard_match = Some(child);
@@ -135,64 +142,15 @@ impl DomainLookupTree {
                 break;
             }
         }
-        wildcard_match
+
+        if let Some(m) = wildcard_match {
+            Some((fqdn, m))
+        } else {
+            None
+        }
     }
 }
 
 fn domain_to_rseg(domain: &str) -> Vec<&str> {
     domain.rsplit(".").collect::<Vec<&str>>()
 }
-
-// fn build_string_from_node(node: Node) -> String {
-// 	let mut str = "";
-// 	if node.wildcard {
-// 		str = ".";
-// 	}
-
-// 	let mut segments = Vec::new();
-// 	loop {
-// 		match node.parent {
-// 			None => {
-// 				// we've hit the root!
-// 				break;
-// 			}
-// 			Some(parent) => {
-// 				seg
-// 			}
-// 		}
-// 	}
-
-// 	str.to_string()
-// }
-
-// This function converts a domain into a nested tree structure for insertion into an existing
-// DomainLookupTree. strip_level allows for the creation of nested trees by slicing out the
-// portion of the domain that already exists in the tree structure of the caller
-// fn domain_to_node_list(domain: &str, strip_level: usize) -> (Node, &str) {
-// 	// Example: www.google.com
-// 	// -> Vec<str> [www, google, com]
-// 	let mut segments: Vec<&str> = domain.split(".").collect::<Vec<&str>>();
-// 	// -> Vec<str> [com, google, www]
-// 	segments.reverse();
-// 	// Example if strip_level was set to 1:
-// 	// -> [google, www]
-// 	let sliced = &segments[strip_level..];
-// 	// -> com
-// 	let highest_level = &segments[sliced.len()..strip_level][0];
-
-// 	let mut root = Node {
-// 		wildcard: false,
-// 		nodes: NodeList::new(),
-// 	};
-// 	let mut head = root.nodes;
-// 	for segment in sliced {
-// 		let n = Node {
-// 			wildcard: false,
-// 			nodes: NodeList::new(),
-// 		};
-// 		head.insert(segment.to_string(), n);
-// 		head = n.nodes;
-// 	}
-
-// 	(root, highest_level)
-// }

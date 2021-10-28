@@ -13,5 +13,5 @@ fn main() {
 	// let node = tree.traverse("test.com");
 
 	println!("{:#?}", tree);
-	println!("{:#?}", tree.traverse("atest.com"));
+	println!("{:#?}", tree.lookup("googlae.com"));
 }
