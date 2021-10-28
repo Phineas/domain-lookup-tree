@@ -1,9 +1,8 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::rc::Weak;
 
-/// RuleTree is a data structure which provides efficient domain name lookup matching with support
-/// for wildcard entries.
+/// DomainLookupTree is a data structure which provides efficient domain name lookup matching with
+/// support for wildcard entries.
 ///
 /// Requirements for this implementation:
 /// - Given a domain name, determine if it matches an entry in the tree
@@ -18,7 +17,7 @@ use std::rc::Weak;
 /// marked as "wildcard" which means theres a rule that matches that domain level and all of its
 /// decendants.
 ///
-/// If, when performing a lookup, the domain contains segments deeper than the wildcard
+/// If, when performing a lookup, the search domain contains segments deeper than the wildcard
 /// match, it can continue to traverse the tree until it exhausts its lookup options. At that
 /// point, the deepest wildcard entry found would be returned, if no absolute match was found.
 ///
@@ -28,12 +27,13 @@ use std::rc::Weak;
 /// lookup for "com", and so on.
 ///
 /// Walking down the tree - the story of a lookup:
-/// Let's say have a RuleTree with an entry ".giggl.app" which means that the tree looks like this:
+/// Let's say have a DomainLookupTree with an entry ".giggl.app" which means that the tree looks
+/// like this:
 ///
 /// app
 /// └── giggl [wildcard]
 ///
-/// A rule lookup for "canary.giggl.app" is requested. First, "app" is matched, but it's not a
+/// A domain lookup for "canary.giggl.app" is requested. First, "app" is matched, but it's not a
 /// wildcard, so it's ignored. We now check the decendants of "app" for "giggl" - it matches, and
 /// it's a wildcard match, so we store it within the context of the lookup. This lookup will now
 /// 100% return a match, even if it isn't absolute. Anyway, we now check the decendants of "giggl"
@@ -47,16 +47,28 @@ type NodeList = HashMap<String, Node>;
 
 #[derive(Debug)]
 pub struct DomainLookupTree {
-    nodes: Box<NodeList>,
+    nodes: NodeList,
     minimum_level: usize,
 }
 
 #[derive(Debug)]
 pub struct Node {
     wildcard: bool,
-    nodes: Box<NodeList>,
-    parent: Option<Weak<Node>>,
+    nodes: NodeList,
+    #[allow(unused)]
+    parent: Option<Weak<Self>>,
     data: String,
+}
+
+impl Node {
+    fn new(wildcard: bool, data: &str) -> Self {
+        Self {
+            wildcard,
+            nodes: Default::default(),
+            parent: None,
+            data: data.to_owned(),
+        }
+    }
 }
 
 // The comments in the implementation are written in relation to the "story of a lookup", above
@@ -64,7 +76,7 @@ pub struct Node {
 impl DomainLookupTree {
     pub fn new(minimum_level: usize) -> DomainLookupTree {
         DomainLookupTree {
-            nodes: Box::new(NodeList::new()),
+            nodes: Default::default(),
             minimum_level,
         }
     }
@@ -73,44 +85,21 @@ impl DomainLookupTree {
     pub fn insert(&mut self, domain: &str) {
         let is_wildcard = domain.starts_with(".");
         let segments = domain_to_rseg(domain);
-        let segments_len = segments.len();
+        let n_segments = segments.len();
 
-        let head: &mut Box<NodeList> = &mut self.nodes.borrow_mut();
+        let mut head = &mut self.nodes;
+        // let mut fqdn = String::new();
+        for (i, segment) in segments.iter().copied().enumerate() {
+            let node = head
+                .entry(segment.to_owned())
+                .or_insert_with(|| Node::new(i == n_segments - 2 && is_wildcard, segment));
 
-        for (i, segment) in segments.iter().enumerate() {
-            let node = head.get(segment.to_owned());
-
-            match node {
-                None => {
-                    &head.insert(
-                        segment.to_string(),
-                        Node {
-                            wildcard: i == segments_len && is_wildcard,
-                            nodes: Box::new(NodeList::new()),
-                            parent: None,
-                            data: segment.to_string(),
-                        },
-                    );
-                }
-                Some(&n) => {
-                    *head = n.nodes;
-                }
+            if i == n_segments - 2 && is_wildcard {
+                return;
             }
-        }
 
-        // deepest_match.insert(de)
-        // match deepest_node {
-        // 	(None, _) => {
-        // 		// We've hit the root node
-        // 		let (tree, seg) = domain_to_node_list(domain, 1);
-        // 		self.nodes.insert(seg.to_string(), tree);
-        // 	}
-        // 	Some(&mut node, depth) => {
-        // 		let (tree, seg) = domain_to_node_list(domain, 1);
-        // 		node.nodes.insert(seg.to_string(), tree);
-        // 		node.wildcard = is_wildcard;
-        // 	}
-        // }
+            head = &mut node.nodes;
+        }
     }
 
     pub fn lookup(&self, domain: &str) -> Option<String> {
@@ -122,58 +111,36 @@ impl DomainLookupTree {
 
     pub fn traverse(&self, domain: &str) -> Option<&Node> {
         let segments = domain_to_rseg(domain);
-        let mut matched: Option<&Node> = None;
+        let mut wildcard_match = None;
         // We start the traversal at the root
         let mut head: &NodeList = &self.nodes;
 
-        let mut depth: usize = 0;
         // We traverse the tree in level-reverse order
-        'sl: for (i, segment) in segments.iter().enumerate() {
-            depth = depth + 1;
+        for (i, segment) in segments.iter().copied().enumerate() {
             // Now we look up the children of the latest matched node
             // If this is the first iteration, then it's the root NodeList
-            let node = &head.get(segment.to_owned());
-            match node {
-                None => {
-                    // We have exhausted the traversal
-                    return matched;
+            if let Some(child) = head.get(segment) {
+                println!("{}, {}, {}, {:?}", i, segments.len(), segment, child);
+                head = &child.nodes;
+                // We have exhausted the traversal. If the traversal depth is equal to the segment
+                // length, then we've found an absolute match!
+                if i == segments.len() - 1 {
+                    return Some(child);
+                } else if child.wildcard {
+                    // Current node is wildcard, so we now 100% have a value to return
+                    wildcard_match = Some(child);
                 }
-                Some(child) => {
-                    // We've matched a decendant, so we set the traversal root for the next iteration
-                    //
-                    // In our example, if this was the first iteration of 'sl, then child would be the
-                    // node for the "app" segment, and it's children contain a hashmap including the
-                    // "giggl" key
-                    //
-                    // If this was the second iteration of our example, then "child" would be the node for
-                    // the "giggl" segment, and wildcard would be true.
-                    head = &child.nodes;
-                    if child.wildcard {
-                        // Current node is wildcard, so we now 100% have a value to return
-                        matched = Some(child);
-                    }
-
-                    if child.nodes.len() == 0 {
-                        // We have exhausted the traversal. If the traversal depth is equal to the segment
-                        // length, then we've found an absolute match!
-                        if i == segments.len() {
-                            matched = Some(child);
-                        }
-                        // Break the loop.
-                        break 'sl;
-                    }
-                }
+            } else {
+                // We have exhausted the traversal.
+                break;
             }
         }
-        return matched;
+        wildcard_match
     }
 }
 
 fn domain_to_rseg(domain: &str) -> Vec<&str> {
-    let mut segments: Vec<&str> = domain.split(".").collect::<Vec<&str>>();
-    segments.reverse();
-
-    segments
+    domain.rsplit(".").collect::<Vec<&str>>()
 }
 
 // fn build_string_from_node(node: Node) -> String {
