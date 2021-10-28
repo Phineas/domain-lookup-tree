@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::rc::Weak;
 
 /// DomainLookupTree is a data structure which provides efficient domain name lookup matching with
 /// support for wildcard entries.
