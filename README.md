@@ -10,9 +10,9 @@ Requirements for this implementation:
 - There can be an ever-growing amount of tree entries
 - Entries can be absolute matches, e.g.: www.google.com
 - Entries may be wildcard entries, which is denoted in the entry by providing a leading dot, e.g.: .twitter.com, .en.wikipedia.org, .giggl.app
-- Wilcard entries can not be embedded
+- Wildcard entries can not be embedded
 
-To achieve this, we implement a simple tree-style structure which has a root structure that contains a vector of nodes. These nodes can then contain other node decendants, and also be marked as "wildcard" which means theres a rule that matches that domain level and all of its decendants.
+To achieve this, we implement a simple tree-style structure which has a root structure that contains a HashMap of nodes. These nodes can then contain other node decendants, and also be marked as "wildcard" which means theres a rule that matches that domain level and all of its decendants.
 
 If, when performing a lookup, the domain contains segments deeper than the wildcard match, it can continue to traverse the tree until it exhausts its lookup options. At that point, the deepest wildcard entry found would be returned, if no absolute match was found.
 

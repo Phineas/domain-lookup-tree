@@ -9,10 +9,10 @@ use std::collections::HashMap;
 /// - Entries can be absolute matches, e.g.: www.google.com
 /// - Entries may be wildcard entries, which is denoted in the entry by providing a leading dot,
 ///   e.g.: .twitter.com, .en.wikipedia.org, .giggl.app
-/// - Wilcard entries can not be embedded
+/// - Wildcard entries can not be embedded
 ///
 /// To achieve this, we implement a simple tree-style structure which has a root structure that
-/// contains a vector of nodes. These nodes can then contain other node decendants, and also be
+/// contains a HashMap of nodes. These nodes can then contain other node decendants, and also be
 /// marked as "wildcard" which means theres a rule that matches that domain level and all of its
 /// decendants.
 ///
@@ -68,6 +68,14 @@ impl Node {
 }
 
 impl DomainLookupTree {
+    /// Returns a new instance of a DomainLookupTree
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use domain_lookup_tree::DomainLookupTree;
+    /// let mut tree = DomainLookupTree::new();
+    /// ```
     pub fn new() -> DomainLookupTree {
         DomainLookupTree {
             nodes: Default::default(),
@@ -75,6 +83,20 @@ impl DomainLookupTree {
         }
     }
 
+    /// Inserts a domain into the DomainLookupTree.
+    ///
+    /// # Arguments
+    ///
+    /// * `domain` - The domain to be inserted into the DLT. Denote as a wildcard by adding a leading dot (.)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use domain_lookup_tree::DomainLookupTree;
+    ///
+    /// let mut tree = DomainLookupTree::new();
+    /// tree.insert(".google.com");
+    /// ```
     pub fn insert(&mut self, domain: &str) {
         let is_wildcard = domain.starts_with(".");
         let segments = domain_to_rseg(domain);
@@ -94,6 +116,22 @@ impl DomainLookupTree {
         }
     }
 
+    /// Looks up a domain in the tree, returns a Result with the matched string including wildcard prefix if
+    /// applicable
+    ///
+    /// # Arguments
+    ///
+    /// * `domain` - The domain to look up in the tree
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use domain_lookup_tree::DomainLookupTree;
+    ///
+    /// let mut tree = DomainLookupTree::new();
+    /// tree.insert(".google.com");
+    /// assert_eq!(tree.lookup("www.google.com"), Some(".google.com".to_string()))
+    /// ```
     pub fn lookup(&self, domain: &str) -> Option<String> {
         match self.traverse(domain) {
             None => None,
