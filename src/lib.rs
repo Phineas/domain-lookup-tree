@@ -116,8 +116,8 @@ impl DomainLookupTree {
         }
     }
 
-    /// Looks up a domain in the tree, returns a Result with the matched string including wildcard prefix if
-    /// applicable
+    /// Looks up a domain in the tree, returns an Option with the matched string including wildcard prefix
+    /// if applicable
     ///
     /// # Arguments
     ///

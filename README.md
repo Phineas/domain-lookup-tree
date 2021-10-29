@@ -43,8 +43,8 @@ use domain_lookup_tree::DomainLookupTree;
 
 let mut tree = DomainLookupTree::new();
 
-
 // Insert some domains
+
 tree.insert(".google.com"); // prefix with a dot to denote a wildcard entry
 tree.insert("api.twitter.com");
 tree.insert("phineas.io");
