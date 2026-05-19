@@ -91,3 +91,27 @@ fn remove_wildcard_entry() {
 	tree.remove(".example.com");
 	assert_eq!(tree.lookup("sub.example.com"), None);
 }
+
+#[test]
+fn wildcard_set_on_existing_node() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert("foo.up.railway.app");
+	tree.insert(".up.railway.app");
+	assert_eq!(tree.lookup("bar.up.railway.app"), Some(".up.railway.app".to_string()));
+}
+
+#[test]
+fn insert_transparent_skips_covered_domain() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert(".up.railway.app");
+	tree.insert_transparent("foo.up.railway.app");
+	assert_eq!(tree.lookup("foo.up.railway.app"), Some(".up.railway.app".to_string()));
+}
+
+#[test]
+fn insert_still_allows_specific_under_wildcard() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert(".up.railway.app");
+	tree.insert("foo.up.railway.app");
+	assert_eq!(tree.lookup("foo.up.railway.app"), Some("foo.up.railway.app".to_string()));
+}

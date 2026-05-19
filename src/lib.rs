@@ -44,13 +44,13 @@ use std::collections::HashMap;
 
 type NodeList = HashMap<String, Node>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DomainLookupTree {
     nodes: NodeList,
     minimum_level: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     wildcard: bool,
     nodes: NodeList,
@@ -106,9 +106,34 @@ impl DomainLookupTree {
         for (i, segment) in segments.iter().copied().enumerate() {
             let node = head
                 .entry(segment.to_owned())
-                .or_insert_with(|| Node::new(i == n_segments - 2 && is_wildcard, segment));
+                .or_insert_with(|| Node::new(false, segment));
 
             if i == n_segments - 2 && is_wildcard {
+                node.wildcard = true;
+                return;
+            }
+
+            head = &mut node.nodes;
+        }
+    }
+
+    pub fn insert_transparent(&mut self, domain: &str) {
+        let is_wildcard = domain.starts_with(".");
+        let segments = domain_to_rseg(domain);
+        let n_segments = segments.len();
+
+        let mut head = &mut self.nodes;
+        for (i, segment) in segments.iter().copied().enumerate() {
+            let node = head
+                .entry(segment.to_owned())
+                .or_insert_with(|| Node::new(false, segment));
+
+            if i == n_segments - 2 && is_wildcard {
+                node.wildcard = true;
+                return;
+            }
+
+            if node.wildcard && !is_wildcard {
                 return;
             }
 
