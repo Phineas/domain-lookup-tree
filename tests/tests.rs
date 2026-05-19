@@ -55,3 +55,39 @@ fn matches_multiple_inserts_under_common_gtld() {
 	assert_eq!(tree.lookup("phineas.io"), Some("phineas.io".to_string()));
 	assert_eq!(tree.lookup("test.com"), Some(".test.com".to_string()))
 }
+
+#[test]
+fn remove_inserted_domain() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert("example.com");
+	assert!(tree.lookup("example.com").is_some());
+	tree.remove("example.com");
+	assert_eq!(tree.lookup("example.com"), None);
+}
+
+#[test]
+fn remove_nonexistent_is_noop() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert("example.com");
+	tree.remove("nonexistent.com");
+	assert!(tree.lookup("example.com").is_some());
+}
+
+#[test]
+fn remove_does_not_affect_siblings() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert("a.example.com");
+	tree.insert("b.example.com");
+	tree.remove("a.example.com");
+	assert_eq!(tree.lookup("a.example.com"), None);
+	assert!(tree.lookup("b.example.com").is_some());
+}
+
+#[test]
+fn remove_wildcard_entry() {
+	let mut tree = DomainLookupTree::new();
+	tree.insert(".example.com");
+	assert!(tree.lookup("sub.example.com").is_some());
+	tree.remove(".example.com");
+	assert_eq!(tree.lookup("sub.example.com"), None);
+}

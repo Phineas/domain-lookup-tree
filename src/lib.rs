@@ -116,6 +116,36 @@ impl DomainLookupTree {
         }
     }
 
+    pub fn remove(&mut self, domain: &str) {
+        let is_wildcard = domain.starts_with(".");
+        let mut segments = domain_to_rseg(domain);
+        if is_wildcard {
+            segments.pop();
+        }
+        Self::remove_inner(&mut self.nodes, &segments, is_wildcard);
+    }
+
+    fn remove_inner(nodes: &mut NodeList, segments: &[&str], is_wildcard: bool) {
+        let Some((&first, rest)) = segments.split_first() else {
+            return;
+        };
+
+        let should_prune = if let Some(node) = nodes.get_mut(first) {
+            if rest.is_empty() && is_wildcard {
+                node.wildcard = false;
+            } else if !rest.is_empty() {
+                Self::remove_inner(&mut node.nodes, rest, is_wildcard);
+            }
+            node.nodes.is_empty() && !node.wildcard
+        } else {
+            return;
+        };
+
+        if should_prune {
+            nodes.remove(first);
+        }
+    }
+
     /// Looks up a domain in the tree, returns an Option with the matched string including wildcard prefix
     /// if applicable
     ///
